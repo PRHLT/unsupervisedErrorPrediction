@@ -24,6 +24,31 @@ def CalibEvDone(path1,path2): # Lee los archivos de calibración y evaluación, 
 
     return calibration, evaluation
 
+def given_grouped(path1,path2):
+    def read_grouped(path):
+        data = []
+        with open(path, "r") as f:
+            for line_number, i in enumerate(f, start=1):
+                l = i.strip()
+                if not l:
+                    continue
+                l = [float(x) for x in l.split()]
+                if len(l) < 3:
+                    raise ValueError(f"El archivo agrupado {path} debe tener al menos 3 columnas en la linea {line_number}.")
+                m = l[0]
+                if m <= 0:
+                    raise ValueError(f"El tamaño de grupo debe ser positivo en {path}, linea {line_number}.")
+                if m.is_integer():
+                    m = int(m)
+                data.append((m, l[1], l[2]))
+
+        if not data:
+            raise ValueError(f"El archivo agrupado {path} no contiene datos.")
+
+        return data
+
+    return read_grouped(path1), read_grouped(path2)
+
 def get_data(data):
 
     y_true = []
@@ -248,15 +273,17 @@ if __name__ == "__main__":
 
     parser.add_argument("archivo1", type=str, help="Archivo de calibración")
     parser.add_argument("archivo2", type=str, help="Archivo de evaluación")
-    parser.add_argument("K", type=int, help="Número de grupos")
+    parser.add_argument("K", type=int, nargs="?", help="Número de grupos")
     parser.add_argument(
         "optimization",
         type=str,
+        nargs="?",
         choices=["ce", "dE", "DE"],
         help="Criterio de optimización de T"
     )
     parser.add_argument("--t",help="Si hay resto, dejarlo como grupo final separado")
     parser.add_argument("--outdir", type=str, default="./experiments", help="Directorio raíz de salida")
+    parser.add_argument("--grouped", action="store_true", help="Los archivos ya estan agrupados")
 
     args = parser.parse_args()
 
@@ -265,23 +292,35 @@ if __name__ == "__main__":
         archivo2 = args.archivo2
         K = args.K
         opt = args.optimization
-        t = (args.t == "True")
+        grouped = args.grouped
+
+        if not grouped and K is None:
+            parser.error("K es obligatorio si no se usa --grouped")
+        if not grouped and opt is None:
+            parser.error("optimization es obligatorio si no se usa --grouped")
+
+        t = False if grouped else (args.t == "True")
         outdir = os.path.abspath(args.outdir)
         t_flag = int(t)
+        suffix = "_grouped" if grouped else f"K{K}"
 
-        calibration, evaluation = CalibEvDone(archivo1, archivo2)
+        if grouped:
+            parsed_calib, parsed = given_grouped(archivo1, archivo2)
+            T = None
+        else:
+            calibration, evaluation = CalibEvDone(archivo1, archivo2)
 
-        y_calib, est_calib, pos_calib, probs_calib = get_data(calibration)
-        y_eval, est_eval, pos_eval, probs_eval = get_data(evaluation)
+            y_calib, est_calib, pos_calib, probs_calib = get_data(calibration)
+            y_eval, est_eval, pos_eval, probs_eval = get_data(evaluation)
 
-        if opt == "ce":
-            T = optimize_temperature_ce(probs_calib, pos_calib)
-        elif opt == "dE":
-            T = optimize_temperature_dE(y_calib, probs_calib, K, t)
-        else:  # opt == "DE"
-            T = optimize_temperature_DE(y_calib, probs_calib, K, t)
+            if opt == "ce":
+                T = optimize_temperature_ce(probs_calib, pos_calib)
+            elif opt == "dE":
+                T = optimize_temperature_dE(y_calib, probs_calib, K, t)
+            else:  # opt == "DE"
+                T = optimize_temperature_DE(y_calib, probs_calib, K, t)
 
-        experimento = f"ts_K{K}_t{t_flag}_{opt}"
+        experimento = "ts_grouped" if grouped else f"ts_K{K}_t{t_flag}_{opt}"
         carpeta = os.path.join(outdir, experimento)
         grouped_dir = os.path.join(carpeta, "grouped")
         predictions_dir = os.path.join(carpeta, "predictions")
@@ -289,23 +328,29 @@ if __name__ == "__main__":
         scripts_dir = os.path.join(carpeta, "scripts")
         metadata_path = os.path.join(carpeta, "metadata.json")
 
-        os.makedirs(grouped_dir, exist_ok=True)
+        if not grouped:
+            os.makedirs(grouped_dir, exist_ok=True)
         os.makedirs(predictions_dir, exist_ok=True)
         os.makedirs(plots_dir, exist_ok=True)
         os.makedirs(scripts_dir, exist_ok=True)
 
-        parsed_calib = group_results(y_calib, probs_calib, T, K, t)
-        cal_agrup_path = os.path.join(grouped_dir, f"calibrationK{K}")
-        save_grouped_results(parsed_calib, cal_agrup_path)
+        if not grouped:
+            parsed_calib = group_results(y_calib, probs_calib, T, K, t)
+            cal_agrup_path = os.path.join(grouped_dir, f"calibrationK{K}")
+            save_grouped_results(parsed_calib, cal_agrup_path)
 
-        parsed = group_results(y_eval, probs_eval, T, K, t)
-        eval_agrup_path = os.path.join(grouped_dir, f"evaluationK{K}")
-        save_grouped_results(parsed, eval_agrup_path)
-        predictions_file = os.path.join(predictions_dir, f"predictionsK{K}")
+            parsed = group_results(y_eval, probs_eval, T, K, t)
+            eval_agrup_path = os.path.join(grouped_dir, f"evaluationK{K}")
+            save_grouped_results(parsed, eval_agrup_path)
+
+        predictions_file = os.path.join(predictions_dir, f"predictions{suffix}")
         Eh, E, DE, dE, rDE, rdE = evaluate_ts(parsed, predictions_file)
 
         print("\n=== RESULTADOS ===")
-        print(f"T   = {T:.6f}")
+        if grouped:
+            print("T   = no optimizada (--grouped)")
+        else:
+            print(f"T   = {T:.6f}")
         print(f"Eh  = {Eh:.4f}%")
         print(f"E   = {E:.4f}%")
         print(f"DE  = {DE:.4f}%")
@@ -319,6 +364,7 @@ if __name__ == "__main__":
                 "archivo2": os.path.abspath(archivo2),
                 "K": K,
                 "t": t,
+                "grouped": grouped,
                 "optimization": opt,
                 "outdir": outdir,
                 "experiment_dir": os.path.abspath(carpeta)

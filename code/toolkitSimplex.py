@@ -27,6 +27,31 @@ def CalibEvDone(path1,path2): # Lee los archivos de calibración y evaluación
 
     return calibration, evaluation
 
+def given_grouped(path1,path2):
+    def read_grouped(path):
+        data = []
+        with open(path, "r") as f:
+            for line_number, i in enumerate(f, start=1):
+                l = i.strip()
+                if not l:
+                    continue
+                l = [float(x) for x in l.split()]
+                if len(l) < 3:
+                    raise ValueError(f"El archivo agrupado {path} debe tener al menos 3 columnas en la linea {line_number}.")
+                m = l[0]
+                if m <= 0:
+                    raise ValueError(f"El tamaño de grupo debe ser positivo en {path}, linea {line_number}.")
+                if m.is_integer():
+                    m = int(m)
+                data.append((m, l[1], l[2]))
+
+        if not data:
+            raise ValueError(f"El archivo agrupado {path} no contiene datos.")
+
+        return data
+
+    return read_grouped(path1), read_grouped(path2)
+
 def agrupar(K, calibration,f,t): # Agrupa los datos en bloques de tamaño K, calcula la media de cada bloque y guarda el resultado en un archivo. Si t es True, el resto se guarda como un bloque separado; si es False, se combina con el último bloque.
     output_file = f
 
@@ -447,56 +472,76 @@ if __name__ == "__main__":
 
     parser.add_argument("archivo1", type=str) # Archivo de calibración
     parser.add_argument("archivo2", type=str) # Archivo de evaluación
-    parser.add_argument("K", type=int)
+    parser.add_argument("K", type=int, nargs="?")
     parser.add_argument("--t", type=str, default = "False") # En caso de no entero que hace (true o false)
     parser.add_argument("--trim", type=str, default = "False") # Si hace triming o no (true o false)
     parser.add_argument("--lim", type=float, default = 0.0) # Limite para el triming
     parser.add_argument("--outdir", type=str, default = "./experiments") # Directorio raíz de salida
+    parser.add_argument("--grouped", action="store_true") # Los archivos ya estan agrupados
 
     args = parser.parse_args()
 
     archivo1 = args.archivo1
     archivo2 = args.archivo2
     K = args.K
+    grouped = args.grouped
 
-    t = (args.t == "True")
+    if not grouped and K is None:
+        parser.error("K es obligatorio si no se usa --grouped")
+
+    t = False if grouped else (args.t == "True")
     trim = (args.trim == "True")
     lim = args.lim
     outdir = os.path.abspath(args.outdir)
     t_flag = int(t)
     trim_flag = int(trim)
+    suffix = "_grouped" if grouped else f"K{K}"
 
-    experimento = f"simplex_K{K}_t{t_flag}_tr{trim_flag}_lim{lim}"
+    experimento = f"simplex_grouped_tr{trim_flag}_lim{lim}" if grouped else f"simplex_K{K}_t{t_flag}_tr{trim_flag}_lim{lim}"
     carpeta = os.path.join(outdir, experimento)
     grouped_dir = os.path.join(carpeta, "grouped")
     predictions_dir = os.path.join(carpeta, "predictions")
     plots_dir = os.path.join(carpeta, "plots")
     scripts_dir = os.path.join(carpeta, "scripts")
 
-    os.makedirs(grouped_dir, exist_ok=True)
+    if not grouped:
+        os.makedirs(grouped_dir, exist_ok=True)
     os.makedirs(predictions_dir, exist_ok=True)
     os.makedirs(plots_dir, exist_ok=True)
     os.makedirs(scripts_dir, exist_ok=True)
 
-    calibration, evaluation = CalibEvDone(archivo1, archivo2)
-
-    cal_agrup_path = os.path.join(grouped_dir, f"calibrationK{K}")
-    eval_agrup_path = os.path.join(grouped_dir, f"evaluationK{K}")
+    if grouped:
+        calibration, evaluation = given_grouped(archivo1, archivo2)
+        cal_agrup_path = os.path.abspath(archivo1)
+        eval_agrup_path = os.path.abspath(archivo2)
+    else:
+        calibration, evaluation = CalibEvDone(archivo1, archivo2)
+        cal_agrup_path = os.path.join(grouped_dir, f"calibrationK{K}")
+        eval_agrup_path = os.path.join(grouped_dir, f"evaluationK{K}")
     metadata_path = os.path.join(carpeta, "metadata.json")
 
     print()
     print("#"*50)
     print()
-    print(f"Resultados del experimento con K={K}:")
+    if grouped:
+        print("Resultados del experimento con datos agrupados:")
+    else:
+        print(f"Resultados del experimento con K={K}:")
     print('-'*50)
     print()
 
     print('Calibración:')
-    calibration = agrupar(K, calibration, cal_agrup_path, t)
+    if grouped:
+        print(f"Leídos {len(calibration)} grupos")
+    else:
+        calibration = agrupar(K, calibration, cal_agrup_path, t)
     print()
 
     print('Evaluación:')
-    evaluation = agrupar(K, evaluation, eval_agrup_path, t)
+    if grouped:
+        print(f"Leídos {len(evaluation)} grupos")
+    else:
+        evaluation = agrupar(K, evaluation, eval_agrup_path, t)
 
     m_calib,x_calib,y_calib = get_mxy(calibration)
     m_eval,x_eval,y_eval = get_mxy(evaluation)
@@ -512,7 +557,7 @@ if __name__ == "__main__":
     print(f"WSSR --> {ws}")
     print()
 
-    predictions_file = os.path.join(predictions_dir, f"predictionsK{K}")
+    predictions_file = os.path.join(predictions_dir, f"predictions{suffix}")
     Eh, E, DE, dE, rDE, rdE = evaluate(K, a, b, evaluation, predictions_file)
 
     print(f"Eh: {Eh}")
@@ -527,13 +572,13 @@ if __name__ == "__main__":
 
     def action(x_fit, y_fit,a, b, plots_dir, scripts_dir, name='Calib', path=cal_agrup_path):
 
-        plot_pdf_path = os.path.join(plots_dir, f"SimplePlot{name}K{K}.pdf")
+        plot_pdf_path = os.path.join(plots_dir, f"SimplePlot{name}{suffix}.pdf")
         simple_plot(x_fit, y_fit, a, b, plot_pdf_path)
 
         data_path = os.path.abspath(path)
         plot_pdf_abs_path = os.path.abspath(plot_pdf_path)
 
-        plot_code_path = os.path.join(scripts_dir, f"{name}_plot_scriptK{K}.py")
+        plot_code_path = os.path.join(scripts_dir, f"{name}_plot_script{suffix}.py")
         guardar_script_plot(data_path, a, b, plot_code_path, plot_pdf_abs_path)
         guardar_script_shell(plot_code_path)
 
@@ -549,6 +594,7 @@ if __name__ == "__main__":
             "archivo2": os.path.abspath(archivo2),
             "K": K,
             "t": t,
+            "grouped": grouped,
             "trim": trim,
             "lim": lim,
             "outdir": outdir,
@@ -581,7 +627,7 @@ if __name__ == "__main__":
         os.makedirs(trim_plots_dir, exist_ok=True)
         os.makedirs(trim_scripts_dir, exist_ok=True)
 
-        cal_agrup_path_trim = os.path.join(trim_grouped_dir, f"calibration_trimK{K}")
+        cal_agrup_path_trim = os.path.join(trim_grouped_dir, f"calibration_trim{suffix}")
         
         with open(cal_agrup_path_trim, "w") as out:
             for m, s1, s2 in zip(m_calib_trim, x_calib_trim, y_calib_trim):
@@ -596,7 +642,7 @@ if __name__ == "__main__":
         print()
         print(f"WSSR --> {ws_trim}")
         print()
-        predictions_file_trim = os.path.join(trim_predictions_dir, f"predictions_trimK{K}")
+        predictions_file_trim = os.path.join(trim_predictions_dir, f"predictions_trim{suffix}")
         Eh_trim, E_trim, DE_trim, dE_trim, rDE_trim, rdE_trim = evaluate(K, a_trim, b_trim, evaluation, predictions_file_trim)
         print(f"Eh: {Eh_trim}")
         print(f"E: {E_trim}")

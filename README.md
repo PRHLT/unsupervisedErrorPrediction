@@ -97,6 +97,16 @@ estimator ts archivo_calibracion archivo_evaluacion outdir [K] [--remain] \
   [ce|dE|DE]
 ```
 
+Para ficheros que ya vienen agrupados:
+
+```bash
+estimator lm|sx archivo_calibracion_agrupada archivo_evaluacion_agrupada \
+  outdir --grouped [--trim:VALOR]
+
+estimator ts archivo_calibracion_agrupada archivo_evaluacion_agrupada \
+  outdir --grouped
+```
+
 ---
 
 ### 4.2 Parámetros
@@ -111,6 +121,8 @@ Opcionales:
 
 * `--remain`: el resto se guarda como último bloque independiente
 * (sin flag) el resto se fusiona en el último bloque
+* `--grouped`: los ficheros de entrada ya están agrupados; en este modo
+  no hace falta pasar `K` ni `--remain`
 * si detecta exactamente el mismo experimento en el mismo `outdir`,
   avisa y pide confirmación antes de recalcular y sobrescribir
 
@@ -168,6 +180,38 @@ Importante:
 
 * Las probabilidades deben ser **salidas softmax (no logits)**
 * Deben sumar 1
+
+---
+
+### 5.3 Para `--grouped`
+
+Cuando los ficheros de calibración y evaluación ya están agrupados,
+deben tener el mismo formato que genera el toolkit en `grouped/`:
+
+```text
+m  media_estimada  media_empirica
+```
+
+En este modo:
+
+* no se pasa `K`
+* no se usa `--remain`
+* no se genera la carpeta superior `grouped/` con una nueva agrupación
+  de calibración/evaluación
+* `lm` y `sx` ajustan el modelo con la calibración agrupada y evalúan
+  sobre la evaluación agrupada
+* `ts` calcula las métricas directamente sobre la evaluación agrupada;
+  no optimiza `T`, porque el fichero agrupado ya no contiene las
+  probabilidades por clase necesarias para recalibrar temperatura
+
+Ejemplos:
+
+```bash
+estimator lm grouped/calibrationK100 grouped/evaluationK100 results --grouped
+estimator sx grouped/calibrationK100 grouped/evaluationK100 results --grouped \
+  --trim:1.5
+estimator ts grouped/calibrationK100 grouped/evaluationK100 results --grouped
+```
 
 ---
 
@@ -316,13 +360,25 @@ outdir/
 └── ts_K{K}_t{0|1}_{ce|dE|DE}/
 ```
 
+Con `--grouped`:
+
+```text
+outdir/
+├── lm_grouped_tr{0|1}_lim{valor}/
+├── simplex_grouped_tr{0|1}_lim{valor}/
+└── ts_grouped/
+```
+
 Contenido común:
 
 * `metadata.json`
-* `grouped/`
 * `predictions/`
 * `plots/`
 * `scripts/`
+
+Además, cuando no se usa `--grouped`, se genera:
+
+* `grouped/`
 
 Opcional:
 
@@ -367,7 +423,15 @@ estimator ts examples/calibration_ts.txt examples/evaluation_ts.txt \
   examples/results_ts 3 dE --remain
 ```
 
-### 8.4 Ejecución de código para generación de gráficos
+### 8.4 Ficheros ya agrupados
+
+```bash
+estimator lm examples/results_lm/lm_K3_t1_tr1_lim1.5/grouped/calibrationK3 \
+  examples/results_lm/lm_K3_t1_tr1_lim1.5/grouped/evaluationK3 \
+  examples/results_lm_grouped --grouped --trim:1.5
+```
+
+### 8.5 Ejecución de código para generación de gráficos
 
 En los experimentos `lm` y `sx`, dentro de `scripts/` se genera un
 script `*.py` por gráfico y otro `*.sh` con el mismo nombre base.

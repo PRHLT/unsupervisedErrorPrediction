@@ -10,11 +10,21 @@ def fix_token(token):
     return token
 
 
-def get_experiment_dir(tool, outdir, K, remain, trim, metric):
+def get_experiment_dir(tool, outdir, K, remain, trim, metric, grouped):
     outdir = str(Path(outdir).absolute())
     t_flag = int(remain)
 
-    if tool == "lm":
+    if grouped and tool == "lm":
+        trim_flag = int(trim is not None)
+        lim = 0.0 if trim is None else trim
+        experiment = f"lm_grouped_tr{trim_flag}_lim{lim}"
+    elif grouped and tool == "sx":
+        trim_flag = int(trim is not None)
+        lim = 0.0 if trim is None else trim
+        experiment = f"simplex_grouped_tr{trim_flag}_lim{lim}"
+    elif grouped:
+        experiment = "ts_grouped"
+    elif tool == "lm":
         trim_flag = int(trim is not None)
         lim = 0.0 if trim is None else trim
         experiment = f"lm_K{K}_t{t_flag}_tr{trim_flag}_lim{lim}"
@@ -28,21 +38,25 @@ def get_experiment_dir(tool, outdir, K, remain, trim, metric):
     return Path(outdir) / experiment
 
 
-def get_expected_inputs(tool, archivo_calibracion, archivo_evaluacion, outdir, K, remain, trim, metric):
-    experiment_dir = get_experiment_dir(tool, outdir, K, remain, trim, metric)
+def get_expected_inputs(tool, archivo_calibracion, archivo_evaluacion, outdir, K, remain, trim, metric, grouped):
+    experiment_dir = get_experiment_dir(tool, outdir, K, remain, trim, metric, grouped)
     expected = {
         "archivo1": str(Path(archivo_calibracion).absolute()),
         "archivo2": str(Path(archivo_evaluacion).absolute()),
-        "K": K,
-        "t": remain,
         "outdir": str(Path(outdir).absolute()),
         "experiment_dir": str(experiment_dir.absolute()),
     }
 
+    if grouped:
+        expected["grouped"] = True
+    else:
+        expected["K"] = K
+        expected["t"] = remain
+
     if tool in {"lm", "sx"}:
         expected["trim"] = trim is not None
         expected["lim"] = 0.0 if trim is None else trim
-    else:
+    elif not grouped:
         expected["optimization"] = metric
 
     return expected, experiment_dir
@@ -75,10 +89,16 @@ K = 100
 remain = False
 trim = None
 metric = "ce"
+grouped = False
 
 i = 4
 while i < len(args):
     token = args[i]
+
+    if token in {"grouped", "--grouped"}:
+        grouped = True
+        i += 1
+        continue
 
     if token in {"remain", "--remain"}:
         remain = True
@@ -103,6 +123,11 @@ while i < len(args):
     K = int(token)
     i += 1
 
+if grouped:
+    K = None
+    remain = False
+    metric = None
+
 expected_inputs, experiment_dir = get_expected_inputs(
     tool,
     archivo_calibracion,
@@ -112,6 +137,7 @@ expected_inputs, experiment_dir = get_expected_inputs(
     remain,
     trim,
     metric,
+    grouped,
 )
 
 metadata_path = experiment_dir / "metadata.json"
@@ -142,13 +168,18 @@ cmd = [
     str(scripts[tool]),
     archivo_calibracion,
     archivo_evaluacion,
-    str(K),
 ]
 
-if tool == "ts":
+if grouped:
+    cmd.append("--grouped")
+else:
+    cmd.append(str(K))
+
+if tool == "ts" and not grouped:
     cmd.append(metric)
 
-cmd.extend(["--t", "True" if remain else "False"])
+if not grouped:
+    cmd.extend(["--t", "True" if remain else "False"])
 
 if tool in {"lm", "sx"} and trim is not None:
     cmd.extend(["--trim", "True", "--lim", str(trim)])
