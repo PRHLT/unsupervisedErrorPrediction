@@ -232,8 +232,8 @@ def simple_plot(x,y,a,b,out_file):
 
     titulo = None
 
-    xlabel = "x"
-    ylabel = "y"
+    xlabel = "Estimated Error"
+    ylabel = "Empirical Error"
 
     xmin = 0.0
     xmax = 1.0

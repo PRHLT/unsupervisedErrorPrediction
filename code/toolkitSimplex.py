@@ -240,8 +240,8 @@ def simple_plot(x,y,a,b,out_file): # Genera un gráfico de dispersión de los da
 
     titulo = None
 
-    xlabel = "x"
-    ylabel = "y"
+    xlabel = "Estimated Error"
+    ylabel = "Empirical Error"
 
     xmin = 0.0
     xmax = 1.0

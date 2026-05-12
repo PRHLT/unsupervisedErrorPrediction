@@ -52,12 +52,12 @@ if [ $# -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ] || [ "$1" = "---help" 
     echo "  ts  -> temperature scaling"
     echo
     echo "Ejemplos:"
-    echo "  estimator lm calibration.txt evaluation.txt results 100"
-    echo "            --remain --trim:2.5"
-    echo "  estimator ts calibration.txt evaluation.txt results 200"
-    echo "            dE"
-    echo "  estimator lm grouped/calibrationK100 grouped/evaluationK100 results 100"
-    echo "            --grouped"
+    echo 
+    echo "  estimator lm examples/calibration.txt examples/evaluation.txt results 3 \\"
+    echo "      --remain"
+    echo
+    echo "  estimator ts examples/calibration_ts.txt examples/evaluation_ts.txt \\"
+    echo "      results 3 dE"
     exit 0
 fi
 
