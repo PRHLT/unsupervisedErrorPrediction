@@ -55,6 +55,11 @@ def given_grouped(path1,path2):
 def agrupar(K, calibration,f,t): # Agrupa los datos en bloques de tamaño K, calcula la media de cada bloque y guarda el resultado en un archivo. Si t es True, el resto se guarda como un bloque separado; si es False, se combina con el último bloque.
     output_file = f
 
+    def write_grouped(vals):
+        with open(output_file, "w") as out:
+            for m, s1, s2 in vals:
+                out.write(f"{m} {s1} {s2}\n")
+
     calibration.sort(key=lambda x: x[1])
 
     s1 = 0.0
@@ -101,9 +106,7 @@ def agrupar(K, calibration,f,t): # Agrupa los datos en bloques de tamaño K, cal
 
             vals.append((r, s1/r, s2/r))
 
-            with open(output_file, "w") as out:
-                for m, s1, s2 in vals:
-                    out.write(f"{m} {s1} {s2}\n")
+            write_grouped(vals)
         
         else:
             s1 = 0.0
@@ -114,14 +117,10 @@ def agrupar(K, calibration,f,t): # Agrupa los datos en bloques de tamaño K, cal
                 s2 += a
             vals.append((c, s1/c, s2/c))
 
-            with open(output_file, "w") as out:
-                for m, s1, s2 in vals:
-                    out.write(f"{m} {s1} {s2}\n")
+            write_grouped(vals)
     
     else:
-        with open(output_file, "w") as out:
-            for m, s1, s2 in vals:
-                out.write(f"{m} {s1} {s2}\n")
+        write_grouped(vals)
         
     return vals
 
