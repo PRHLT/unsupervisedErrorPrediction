@@ -68,7 +68,7 @@ if [ $# -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ] || [ "$1" = "---help" 
 fi
 
 if [ ! -x "$VENV_PYTHON" ]; then
-    echo "No existe .toolkit2venv. Ejecuta ./install.sh primero."
+    echo ".toolkit2venv does not exist. Run ./install.sh first."
     exit 1
 fi
 

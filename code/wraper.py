@@ -60,15 +60,15 @@ def get_expected_inputs(tool, archivo_calibracion, archivo_evaluacion, outdir, K
 
 def should_recalculate(experiment_dir):
     prompt = (
-        f"\nEl experimento:\n"
+        f"\nThe experiment:\n"
         f"{experiment_dir}\n"
-        "ya existe con la misma entrada.\n"
-        "¿Sobrescribir y recalcular? [y/N]: "
+        "already exists with the same input.\n"
+        "Overwrite and recalculate? [y/N]: "
     )
     try:
         answer = input(prompt).strip().lower()
     except EOFError:
-        print("No se pudo leer la respuesta. Se cancela para no sobrescribir.")
+        print("Could not read the answer. Cancelling to avoid overwriting.")
         return False
 
     return answer in {"y", "yes", "s", "si", "sí"}
@@ -82,7 +82,7 @@ def die(message):
 args = [fix_token(arg) for arg in sys.argv[1:]]
 
 if len(args) < 4:
-    die("uso: estimator lm|sx|ts archivo_calibracion archivo_evaluacion outdir ...")
+    die("usage: estimator lm|sx|ts calibration_file evaluation_file outdir ...")
 
 tool = args[0]
 archivo_calibracion = args[1]
@@ -90,7 +90,7 @@ archivo_evaluacion = args[2]
 outdir = args[3]
 
 if tool not in {"lm", "sx", "ts"}:
-    die("el primer argumento debe ser lm, sx o ts")
+    die("the first argument must be lm, sx, or ts")
 
 K = None
 remain = False
@@ -130,12 +130,12 @@ while i < len(args):
     try:
         K = int(token)
     except ValueError:
-        die(f"argumento no reconocido: {token}")
+        die(f"unrecognized argument: {token}")
     i += 1
 
 if K is None:
     if grouped:
-        die("K es obligatorio si se usa --grouped; se usa sólo para nombrar el experimento")
+        die("K is required if --grouped is used; it is only used to name the experiment")
     K = 100
 
 if grouped:
@@ -165,7 +165,7 @@ if metadata_path.is_file():
         saved_inputs = metadata.get("inputs", {})
         if all(saved_inputs.get(key) == value for key, value in expected_inputs.items()):
             if not should_recalculate(experiment_dir):
-                print("Experimento cancelado. Se conservan los resultados existentes.")
+                print("Experiment cancelled. Existing results are kept.")
                 raise SystemExit(0)
 
 base_dir = Path(__file__).resolve().parent

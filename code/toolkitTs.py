@@ -34,16 +34,16 @@ def given_grouped(path1,path2):
                     continue
                 l = [float(x) for x in l.split()]
                 if len(l) < 3:
-                    raise ValueError(f"El archivo agrupado {path} debe tener al menos 3 columnas en la linea {line_number}.")
+                    raise ValueError(f"The grouped file {path} must have at least 3 columns on line {line_number}.")
                 m = l[0]
                 if m <= 0:
-                    raise ValueError(f"El tamaño de grupo debe ser positivo en {path}, linea {line_number}.")
+                    raise ValueError(f"The group size must be positive in {path}, line {line_number}.")
                 if m.is_integer():
                     m = int(m)
                 data.append((m, l[1], l[2]))
 
         if not data:
-            raise ValueError(f"El archivo agrupado {path} no contiene datos.")
+            raise ValueError(f"The grouped file {path} contains no data.")
 
         return data
 
@@ -78,7 +78,7 @@ def get_data(data):
 def apply_t(probs, T, eps=1e-15): # Aplica la temperatura T a las probabilidades utilizando la fórmula: p_i' = p_i^(1/T) / sum(p_j^(1/T)), ya que se aplica sobre salidas de una softmax, no logits.
 
     if T <= 0:
-        raise ValueError("T debe ser > 0")
+        raise ValueError("T must be > 0")
 
     probs = np.asarray(probs, dtype=float)
     probs = np.clip(probs, eps, 1.0)
@@ -162,9 +162,9 @@ def agrupar(K, estimated,t): # Devuelve una lista de tuplas (n, avg_real, avg_es
     count = 0
 
     if K <= 0:
-        raise ValueError("K debe ser un entero positivo.")
+        raise ValueError("K must be a positive integer.")
     if K > len(estimated):
-        raise ValueError("K no puede ser mayor que el número de datos en la calibración.")
+        raise ValueError("K cannot be greater than the number of calibration data points.")
     
     M = len(estimated) // K
     r = len(estimated) % K
@@ -281,22 +281,22 @@ def guardar_metadata(metadata_path, metadata):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        epilog="Métricas de salida: Ecal=error calibrado (%), Ee=error estimado de entrada (%), E=error empírico (%), DE=|Ecal-E| (%)."
+        epilog="Output metrics: Ecal=calibrated error (%), Ee=input estimated error (%), E=empirical error (%), DE=|Ecal-E| (%)."
     )
 
-    parser.add_argument("archivo1", type=str, help="Archivo de calibración")
-    parser.add_argument("archivo2", type=str, help="Archivo de evaluación")
-    parser.add_argument("K", type=int, nargs="?", help="Número de grupos")
+    parser.add_argument("archivo1", type=str, help="Calibration file")
+    parser.add_argument("archivo2", type=str, help="Evaluation file")
+    parser.add_argument("K", type=int, nargs="?", help="Number of groups")
     parser.add_argument(
         "optimization",
         type=str,
         nargs="?",
         choices=["ce", "dE", "DE"],
-        help="Criterio de optimización de T"
+        help="T optimization criterion"
     )
-    parser.add_argument("--remain", action="store_true", help="Si hay resto, dejarlo como grupo final separado")
-    parser.add_argument("--outdir", type=str, default="./experiments", help="Directorio raíz de salida")
-    parser.add_argument("--grouped", action="store_true", help="Los archivos ya estan agrupados")
+    parser.add_argument("--remain", action="store_true", help="If there is a remainder, keep it as a separate final group")
+    parser.add_argument("--outdir", type=str, default="./experiments", help="Root output directory")
+    parser.add_argument("--grouped", action="store_true", help="The files are already grouped")
 
     args = parser.parse_args()
 
@@ -308,9 +308,9 @@ if __name__ == "__main__":
         grouped = args.grouped
 
         if K is None:
-            parser.error("K es obligatorio. Con --grouped se usa sólo para nombrar el experimento")
+            parser.error("K is required. With --grouped it is only used to name the experiment")
         if not grouped and opt is None:
-            parser.error("optimization es obligatorio si no se usa --grouped")
+            parser.error("optimization is required unless --grouped is used")
 
         t = args.remain
         outdir = os.path.abspath(args.outdir)
@@ -361,9 +361,9 @@ if __name__ == "__main__":
         predictions_file = os.path.join(predictions_dir, f"predictions{suffix}")
         Ecal, E, DE, dE, rDE, rdE = evaluate_ts(parsed, predictions_file)
 
-        print("\n=== RESULTADOS ===")
+        print("\n=== RESULTS ===")
         if grouped:
-            print("T   = no optimizada (--grouped)")
+            print("T   = not optimized (--grouped)")
         else:
             print(f"T   = {T:.6f}")
         print(f"Ecal = {Ecal:.4f}%")
@@ -400,13 +400,13 @@ if __name__ == "__main__":
         guardar_metadata(metadata_path, metadata)
 
     except FileNotFoundError as e:
-        print(f"Error: no se encontró el archivo: {e.filename}")
+        print(f"Error: file not found: {e.filename}")
         raise SystemExit(1)
 
     except ValueError as e:
-        print(f"Error de valor: {e}")
+        print(f"Value error: {e}")
         raise SystemExit(1)
 
     except Exception as e:
-        print(f"Error inesperado: {type(e).__name__}: {e}")
+        print(f"Unexpected error: {type(e).__name__}: {e}")
         raise SystemExit(1)

@@ -37,16 +37,16 @@ def given_grouped(path1,path2):
                     continue
                 l = [float(x) for x in l.split()]
                 if len(l) < 3:
-                    raise ValueError(f"El archivo agrupado {path} debe tener al menos 3 columnas en la linea {line_number}.")
+                    raise ValueError(f"The grouped file {path} must have at least 3 columns on line {line_number}.")
                 m = l[0]
                 if m <= 0:
-                    raise ValueError(f"El tamaño de grupo debe ser positivo en {path}, linea {line_number}.")
+                    raise ValueError(f"The group size must be positive in {path}, line {line_number}.")
                 if m.is_integer():
                     m = int(m)
                 data.append((m, l[1], l[2]))
 
         if not data:
-            raise ValueError(f"El archivo agrupado {path} no contiene datos.")
+            raise ValueError(f"The grouped file {path} contains no data.")
 
         return data
 
@@ -67,14 +67,14 @@ def agrupar(K, calibration,f,t): # Agrupa los datos en bloques de tamaño K, cal
     count = 0
 
     if K <= 0:
-        raise ValueError("K debe ser un entero positivo.")
+        raise ValueError("K must be a positive integer.")
     if K > len(calibration):
-        raise ValueError("K no puede ser mayor que el número de datos en la calibración.")
+        raise ValueError("K cannot be greater than the number of calibration data points.")
     
     M = len(calibration) // K
     r = len(calibration) % K
 
-    print(f"Agrupado en bloques de tamaño M={M} con resto r={r}")
+    print(f"Grouped into blocks of size M={M} with remainder r={r}")
 
     vals = []
 
@@ -474,7 +474,7 @@ exec {python_path!r} "$SCRIPT_DIR/{script_name}" "$@"
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        epilog="Métricas de salida: Ecal=error calibrado (%), Ee=error estimado de entrada (%), E=error empírico (%), DE=|Ecal-E| (%)."
+        epilog="Output metrics: Ecal=calibrated error (%), Ee=input estimated error (%), E=empirical error (%), DE=|Ecal-E| (%)."
     )
 
     parser.add_argument("archivo1", type=str) # Archivo de calibración
@@ -494,7 +494,7 @@ if __name__ == "__main__":
     grouped = args.grouped
 
     if K is None:
-        parser.error("K es obligatorio. Con --grouped se usa sólo para nombrar el experimento")
+        parser.error("K is required. With --grouped it is only used to name the experiment")
 
     t = args.remain
     trim = (args.trim == "True")
@@ -531,22 +531,22 @@ if __name__ == "__main__":
     print("#"*50)
     print()
     if grouped:
-        print("Resultados del experimento con datos agrupados:")
+        print("Results for experiment with grouped data:")
     else:
-        print(f"Resultados del experimento con K={K}:")
+        print(f"Results for experiment with K={K}:")
     print('-'*50)
     print()
 
-    print('Calibración:')
+    print('Calibration:')
     if grouped:
-        print(f"Leídos {len(calibration)} grupos")
+        print(f"Read {len(calibration)} groups")
     else:
         calibration = agrupar(K, calibration, cal_agrup_path, t)
     print()
 
-    print('Evaluación:')
+    print('Evaluation:')
     if grouped:
-        print(f"Leídos {len(evaluation)} grupos")
+        print(f"Read {len(evaluation)} groups")
     else:
         evaluation = agrupar(K, evaluation, eval_agrup_path, t)
 
@@ -556,10 +556,10 @@ if __name__ == "__main__":
     a,b,ws = train_model_simplex(x_calib, y_calib, m_calib)
 
     print()
-    print('Resultados del ajuste:')
+    print('Fit results:')
     print('-'*50)
     print()
-    print(f"Parametros del ajuste --> a={a}, b={b}")
+    print(f"Fit parameters --> a={a}, b={b}")
     print()
     print(f"WSSR --> {ws}")
     print()
@@ -644,10 +644,10 @@ if __name__ == "__main__":
         
         a_trim, b_trim, ws_trim = train_model_simplex(x_calib_trim, y_calib_trim, m_calib_trim)
         print()
-        print('Resultados del ajuste con datos trimados:')
+        print('Trimmed-data fit results:')
         print('-'*50)
         print()
-        print(f"Parametros del ajuste --> a={a_trim}, b={b_trim}")
+        print(f"Fit parameters --> a={a_trim}, b={b_trim}")
         print()
         print(f"WSSR --> {ws_trim}")
         print()

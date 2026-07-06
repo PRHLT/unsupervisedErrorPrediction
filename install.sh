@@ -19,16 +19,16 @@ for candidate in python3.13 python3.12 python3.11 python3.10 python3.9 python3; 
 done
 
 if [ -z "$PYTHON_BIN" ]; then
-    echo "No se ha encontrado una version de Python compatible en el sistema."
-    echo "Se requiere Python entre 3.9 y 3.13."
-    echo "En Ubuntu puedes instalar Python y venv con:"
+    echo "No compatible Python version was found on this system."
+    echo "Python 3.9 to 3.13 is required."
+    echo "On Ubuntu, you can install Python and venv with:"
     echo "  sudo apt update && sudo apt install python3 python3-venv"
     exit 1
 fi
 
 if ! "$PYTHON_BIN" -c "import venv" >/dev/null 2>&1; then
-    echo "El modulo venv no esta disponible en $PYTHON_BIN."
-    echo "En Ubuntu puedes instalarlo con:"
+    echo "The venv module is not available in $PYTHON_BIN."
+    echo "On Ubuntu, you can install it with:"
     echo "  sudo apt update && sudo apt install python3-venv"
     exit 1
 fi
@@ -36,8 +36,8 @@ fi
 mkdir -p "$LOCAL_BIN_DIR"
 
 if [[ ":$PATH:" != *":$LOCAL_BIN_DIR:"* ]]; then
-    echo "Falta $LOCAL_BIN_DIR en PATH."
-    echo "Anadelo y vuelve a ejecutar este instalador."
+    echo "$LOCAL_BIN_DIR is missing from PATH."
+    echo "Add it and run this installer again."
     echo "export PATH=\"\$HOME/.local/bin:\$PATH\""
     exit 1
 fi
@@ -47,9 +47,9 @@ if [ ! -x "$VENV_DIR/bin/python" ]; then
 fi
 
 if ! "$VENV_DIR/bin/python" -c "$PYTHON_VERSION_CHECK" >/dev/null 2>&1; then
-    echo "El entorno virtual existente usa una version de Python fuera del rango soportado."
-    echo "Se requiere Python entre 3.9 y 3.13."
-    echo "Elimina $VENV_DIR y vuelve a ejecutar este instalador."
+    echo "The existing virtual environment uses an unsupported Python version."
+    echo "Python 3.9 to 3.13 is required."
+    echo "Remove $VENV_DIR and run this installer again."
     exit 1
 fi
 
@@ -64,4 +64,4 @@ fi
 chmod +x "$ROOT_DIR/toolkit.sh"
 ln -sfn "$ROOT_DIR/toolkit.sh" "$ESTIMATOR_CMD"
 
-echo "Comando instalado: estimator"
+echo "Command installed: estimator"
